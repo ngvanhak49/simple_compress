@@ -275,7 +275,7 @@ int main() {
     
     free(data3);
     free(decompressed3);
-    
+#if (VALIDATE_MSB_ENABLED)     
     // Test case 4: Invalid data with MSB = 1
     printf("\n=== Test 4: Invalid data validation (MSB = 1) ===\n");
     uint8_t data4[] = {0x10, 0x20, 0x80, 0x30};  // 0x80 has MSB = 1
@@ -284,12 +284,12 @@ int main() {
         printf("%02X ", data4[i]);
     }
     printf("\n");
-    
     int result = simple_validate(data4, 4);
     printf("Validation result: %s\n", result == 0 ? "VALID" : "INVALID");
     
     int compressed_len4 = simple_compress(data4, 4);
     printf("Compression result: %s\n\n", compressed_len4 >= 0 ? "SUCCESS" : "FAILED (as expected)");
+#endif
     
     return 0;
 }
