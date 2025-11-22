@@ -5,9 +5,9 @@
 ```mermaid
 flowchart TD
     Start([START]) --> Input[Input: data array and length]
-    Input --> Validate{Validate all<br/>bytes < 128?}
-    Validate -->|NO| Error[Return -1<br/>Validation Error]
-    Validate -->|YES| Init[read_pos = 0<br/>write_pos = 0]
+    Input --> CheckNull{data NULL or<br/>len <= 0?}
+    CheckNull -->|YES| ErrorNull[Return 0<br/>Invalid Input]
+    CheckNull -->|NO| Init[read_pos = 0<br/>write_pos = 0]
     Init --> Loop{read_pos < len?}
     Loop -->|NO| Return[Return write_pos<br/>compressed length]
     Loop -->|YES| GetByte[current_byte = data at read_pos]
@@ -19,7 +19,7 @@ flowchart TD
     WriteRLE --> Update
     Update --> Loop
     Return --> End([END])
-    Error --> End
+    ErrorNull --> End
 ```
 
 ## Decompression Algorithm (simple_decompress)
@@ -27,7 +27,9 @@ flowchart TD
 ```mermaid
 flowchart TD
     Start([START]) --> Input[Input: compressed array<br/>Output: output buffer]
-    Input --> Init[read_pos = 0<br/>write_pos = 0]
+    Input --> CheckNull{compressed NULL or<br/>output NULL or<br/>compressed_len <= 0?}
+    CheckNull -->|YES| ErrorNull[Return -1<br/>Invalid Input]
+    CheckNull -->|NO| Init[read_pos = 0<br/>write_pos = 0]
     Init --> Loop{read_pos <<br/>compressed_len?}
     Loop -->|NO| Return[Return write_pos<br/>decompressed length]
     Loop -->|YES| ReadByte[byte = compressed at read_pos<br/>read_pos++]
@@ -35,30 +37,14 @@ flowchart TD
     CheckMSB -->|YES - RLE| ExtractCount[count = byte & 0x7F<br/>Extract lower 7 bits]
     CheckMSB -->|NO - Literal| WriteLiteral[Write byte to output<br/>write_pos++]
     ExtractCount --> ReadData[data_byte = compressed at read_pos<br/>read_pos++]
-    ReadData --> WriteLoop[Write data_byte<br/>count times to output<br/>write_pos += count]
+    ReadData --> CheckOverflow{write_pos + count<br/>> output_max?}
+    CheckOverflow -->|YES| ErrorOverflow[Return -1<br/>Buffer Overflow]
+    CheckOverflow -->|NO| WriteLoop[Write data_byte<br/>count times to output<br/>write_pos += count]
     WriteLoop --> Loop
     WriteLiteral --> Loop
     Return --> End([END])
-```
-
-## Validation Algorithm (simple_validate)
-
-```mermaid
-flowchart TD
-    Start([START]) --> Input[Input: data array and length]
-    Input --> CheckNull{data NULL<br/>or len <= 0?}
-    CheckNull -->|YES| ErrorNull[Return -1]
-    CheckNull -->|NO| InitLoop[i = 0]
-    InitLoop --> Loop{i < len?}
-    Loop -->|NO| Success[Return 0<br/>Valid]
-    Loop -->|YES| CheckByte{data at i >= 128?<br/>MSB = 1?}
-    CheckByte -->|YES| PrintError[Print error:<br/>index and value]
-    CheckByte -->|NO| Increment[i++]
-    PrintError --> ErrorInvalid[Return -1<br/>Invalid]
-    Increment --> Loop
-    Success --> End([END])
     ErrorNull --> End
-    ErrorInvalid --> End
+    ErrorOverflow --> End
 ```
 
 ## Complete Process Flow
@@ -66,8 +52,7 @@ flowchart TD
 ```mermaid
 flowchart LR
     subgraph Compression
-        A[Input Data<br/>7-bit values] --> B[Validate<br/>all < 128]
-        B --> C[Count<br/>consecutive]
+        A[Input Data] --> C[Count<br/>consecutive]
         C --> D{Single or<br/>Multiple?}
         D -->|Single| E[Write literal]
         D -->|Multiple| F[Write RLE<br/>0x80 OR count + data]
